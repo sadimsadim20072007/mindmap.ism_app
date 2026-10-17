@@ -3,3 +3,5 @@ google-generativeai
 pypdf
 python-pptx
 graphviz
+Pillow
+pdf2docx
