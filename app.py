@@ -1,32 +1,45 @@
 import streamlit as st
 import google.generativeai as genai
 import pypdf
+from pptx import Presentation
 
-# ضبط إعدادات الصفحة
+# Configuration de la page
 st.set_page_config(page_title="صانع الخرائط الذهنية المرئية", page_icon="🧠", layout="wide")
 
 st.title("🧠 صانع الخرائط الذهنية والمرئية (Mind Map Diagram)")
-st.write("ارفع ملفك (PDF أو TXT) وسيقوم الذكاء الاصطناعي بتحويله إلى خطاطة مرئية بأشكال وأسهم.")
+st.write("ارفع ملفك (PDF, TXT, PPTX) وسيقوم الذكاء الاصطناعي بتحويله إلى خطاطة مرئية بأشكال وأسهم.")
 
-# إدخال مفتاح API في القائمة الجانبية
+# Clé API dans la barre latérale
 api_key = st.sidebar.text_input("أدخل مفتاح Gemini API الخاص بك:", type="password")
 
-# رفع الملف
-uploaded_file = st.file_uploader("اختر ملفاً لرفعه", type=["pdf", "txt"])
+# Téléversement du fichier (PDF, TXT, PPTX)
+uploaded_file = st.file_uploader("اختر ملفاً لرفعه", type=["pdf", "txt", "pptx"])
 
 text_content = ""
 
 if uploaded_file is not None:
+    # Lecture des fichiers PDF
     if uploaded_file.name.endswith(".pdf"):
         pdf_reader = pypdf.PdfReader(uploaded_file)
         for page in pdf_reader.pages:
             text_content += page.extract_text() or ""
+            
+    # Lecture des fichiers TXT
     elif uploaded_file.name.endswith(".txt"):
         text_content = uploaded_file.read().decode("utf-8")
+        
+    # Lecture des fichiers PowerPoint (.pptx)
+    elif uploaded_file.name.endswith(".pptx"):
+        prs = Presentation(uploaded_file)
+        for slide in prs.slides:
+            for shape in slide.shapes:
+                if shape.has_text_frame:
+                    for paragraph in shape.text_frame.paragraphs:
+                        text_content += paragraph.text + "\n"
 
     st.success("تم قراءة الملف بنجاح!")
 
-    # زر إنشاء الخطاطة المرئية
+    # Bouton de génération
     if st.button("🚀 أنشئ الخطاطة المرئية"):
         if not api_key:
             st.error("يرجى إدخال مفتاح API في القائمة الجانبية أولاً.")
@@ -53,14 +66,11 @@ if uploaded_file is not None:
                     response = model.generate_content(prompt)
                     dot_code = response.text.strip()
                     
-                    # تنظيف الكود من أي علامات تنسيق زائدة
                     if "```" in dot_code:
                         lines = dot_code.split("\n")
                         dot_code = "\n".join([line for line in lines if not line.startswith("```")])
                     
                     st.subheader("📌 الخطاطة الذهنية المرئية:")
-                    
-                    # عرض الخطاطة الرسمية كشكل بياني أشكال وأسهم
                     st.graphviz_chart(dot_code)
                     
             except Exception as e:
