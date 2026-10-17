@@ -15,18 +15,16 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# تطبيق تنسيقات CSS احترافية تطابق التصميم المرفق
+# تطبيق تنسيقات CSS احترافية
 st.markdown("""
 <style>
-    @import url('[suspicious link removed]');
-    
     html, body, [class*="css"] {
-        font-family: 'Tajawal', sans-serif !important;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
         direction: rtl;
         text-align: right;
     }
     
-    /* الهيدر العلوي الأنيق الداكن */
+    /* الهيدر العلوي الداكن */
     .hero-header {
         background: linear-gradient(135deg, #0d233a 0%, #17375e 100%);
         color: #ffffff;
@@ -57,7 +55,6 @@ st.markdown("""
         padding: 0.5rem 1.2rem;
         border-radius: 30px;
         font-size: 0.95rem;
-        backdrop-filter: blur(5px);
     }
 
     /* أزرار مخصصة */
@@ -85,7 +82,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 1. الهيدر الداكن الرئيسي (Hero Header)
+# 1. الهيدر الداكن الرئيسي
 st.markdown("""
 <div class="hero-header">
     <div class="hero-title">🧠 المذكرة اليومية والخرائط الذهنية الذكية</div>
@@ -100,13 +97,13 @@ with st.sidebar:
     api_key = st.text_input("أدخل مفتاح Gemini API الخاص بك:", type="password")
     selected_model = st.selectbox("نموذج الذكاء الاصطناعي:", ["gemini-3.8-flash", "gemini-1.5-flash", "gemini-1.5-pro"])
     st.markdown("---")
-    [lien suspect supprimé]("💡 يتم استخدام النموذج المحدد لتوليد الخرائط والمذكرات وفق الهيكلة التربوية.")
+    st.info("💡 يتم استخدام النموذج المحدد لتوليد الخرائط والمذكرات وفق الهيكلة التربوية.")
 
 # حاوية الإدخال والتحكم الرئيسية
-col_file, col_date = st.columns([2, 1])
+col_file, col_date = st.columns(2)
 
 with col_date:
-    selected_date = [lien suspect supprimé]_input("📅 اختيار التاريخ", [lien suspect supprimé]())
+    selected_date = st.date_input("📅 اختيار التاريخ", datetime.date.today())
 
 with col_file:
     uploaded_file = st.file_uploader("📂 إدراج العروض أو المستندات (PDF, PPTX, TXT, PNG, JPG)", type=["pdf", "txt", "pptx", "png", "jpg", "jpeg"])
@@ -115,7 +112,7 @@ text_content = ""
 image_input = None
 
 if uploaded_file is not None:
-    file_ext = [lien suspect supprimé].split(".")[-1].lower()
+    file_ext = uploaded_file.name.split(".")[-1].lower()
     
     # قراءة الملف حسب نوعه
     if file_ext == "pdf":
@@ -123,7 +120,7 @@ if uploaded_file is not None:
         for page in pdf_reader.pages:
             text_content += page.extract_text() or ""
     elif file_ext == "txt":
-        text_content = [lien suspect supprimé]().decode("utf-8")
+        text_content = uploaded_file.read().decode("utf-8")
     elif file_ext == "pptx":
         prs = Presentation(uploaded_file)
         for slide in prs.slides:
@@ -132,16 +129,16 @@ if uploaded_file is not None:
                     for paragraph in shape.text_frame.paragraphs:
                         text_content += paragraph.text + "\n"
     elif file_ext in ["png", "jpg", "jpeg"]:
-        image_input = [lien suspect supprimé](uploaded_file)
+        image_input = Image.open(uploaded_file)
 
     st.markdown(f"""
     <div class="status-pill">
-        ✅ تم تحميل الملف <b>{[lien suspect supprimé]}</b> بنجاح وسيكون التنسيق عمودياً تلقائياً (Portrait).
+        ✅ تم تحميل الملف <b>{uploaded_file.name}</b> بنجاح وسيكون التنسيق عمودياً تلقائياً.
     </div>
     """, unsafe_allow_html=True)
 
     # شريط الأزرار الرئيسية المنسق
-    c1, c2, c3 = st.columns([2, 1, 1])
+    c1, c2, c3 = st.columns(3)
     
     with c1:
         generate_btn = st.button("🪄 توليد المذكرة والخطاطة تلقائياً", type="primary", use_container_width=True)
@@ -168,11 +165,11 @@ if uploaded_file is not None:
                     cv.close()
                     
                     with open(temp_docx, "rb") as f:
-                        docx_data = [lien suspect supprimé]()
+                        docx_data = f.read()
                         
                     st.success("تم التحويل بنجاح!")
-                    filename_base = [lien suspect supprimé].rsplit('.', 1)[0]
-                    [lien suspect supprimé]_button(
+                    filename_base = uploaded_file.name.rsplit('.', 1)[0]
+                    st.download_button(
                         label="📥 تحميل مستند Word (.docx)",
                         data=docx_data,
                         file_name=f"{filename_base}.docx",
