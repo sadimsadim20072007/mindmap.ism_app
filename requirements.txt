@@ -1,7 +1,5 @@
 streamlit
 google-generativeai
-pypdf
 python-pptx
-graphviz
+pypdf
 Pillow
-pdf2docx
