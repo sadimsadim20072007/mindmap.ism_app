@@ -36,33 +36,33 @@ if uploaded_file is not None:
         if st.button("🔄 تحويل هذا الملف إلى Word"):
             with st.spinner("جاري تحويل الملف... قد يستغرق ذلك بضع ثوانٍ"):
                 try:
-                    # حفظ الملف المؤقت
                     temp_pdf = "temp_input.pdf"
                     temp_docx = "converted_output.docx"
                     
                     with open(temp_pdf, "wb") as f:
                         f.write(uploaded_file.getbuffer())
                     
-                    # عملية التحويل
                     cv = Converter(temp_pdf)
                     cv.convert(temp_docx, start=0, end=None)
                     cv.close()
                     
-                    # قراءة الملف المحول للتحميل
                     with open(temp_docx, "rb") as f:
                         docx_data = f.read()
                         
                     st.success("تم تحويل الملف بنجاح!")
+                    
+                    filename_base = uploaded_file.name.rsplit('.', 1)[0]
                     st.download_button(
                         label="📥 تحميل مستند Word (.docx)",
                         data=docx_data,
-                        file_name=f"{uploaded_file.name.rsplit('.', 1)[0]}.docx",
+                        file_name=f"{filename_base}.docx",
                         mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                     )
                     
-                    # تنظيف الملفات المؤقتة
-                    if os.path.exists(temp_pdf): os.remove(temp_pdf)
-                    if os.path.exists(temp_docx): os.remove(temp_docx)
+                    if os.path.exists(temp_pdf):
+                        os.remove(temp_pdf)
+                    if os.path.exists(temp_docx):
+                        os.remove(temp_docx)
                     
                 except Exception as e:
                     st.error(f"حدث خطأ أثناء التحويل: {e}")
@@ -95,6 +95,7 @@ if uploaded_file is not None:
         else:
             try:
                 genai.configure(api_key=api_key)
+                # استخدام النموذج المحدد gemini-3.8-flash
                 model = genai.GenerativeModel("gemini-3.8-flash")
                 
                 with st.spinner("جاري تصميم الخطاطة..."):
@@ -122,3 +123,9 @@ if uploaded_file is not None:
                     if "```" in dot_code:
                         lines = dot_code.split("\n")
                         dot_code = "\n".join([line for line in lines if not line.startswith("```")])
+                    
+                    st.subheader("📌 الخطاطة الذهنية المرئية:")
+                    st.graphviz_chart(dot_code)
+                    
+            except Exception as e:
+                st.error(f"حدث خطأ أثناء رسم الخطاطة: {e}")
