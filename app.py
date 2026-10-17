@@ -15,10 +15,8 @@ st.set_page_config(
 # تطبيق تنسيقات CSS لمطابقة الواجهة
 st.markdown("""
 <style>
-    @import url('[suspicious link removed]');
-    
     html, body, [class*="css"] {
-        font-family: 'Tajawal', sans-serif !important;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
         direction: rtl;
         text-align: right;
         background-color: #f4f7f9;
@@ -153,7 +151,7 @@ with st.sidebar:
     api_key = st.text_input("أدخل مفتاح Gemini API الخاص بك:", type="password")
     model_name = st.selectbox("النموذج المستخدم:", ["gemini-3.8-flash", "gemini-1.5-flash", "gemini-1.5-pro"])
     st.markdown("---")
-    [lien suspect supprimé]("💡 يتم تحليل ملفات PPTX وإنشاء المذكرة الموحدة المخصصة لمؤسسات الريادة.")
+    st.info("💡 يتم تحليل ملفات PPTX وإنشاء المذكرة الموحدة المخصصة لمؤسسات الريادة.")
 
 # 1. شريط التحكم العلوي والأزرار
 st.markdown('<div class="top-toolbar">', unsafe_allow_html=True)
@@ -164,7 +162,7 @@ with row1_col1:
     uploaded_files = st.file_uploader("💻 إدراج العروض التقديمية (PPTX)", type=["pptx", "pdf"], accept_multiple_files=True, label_visibility="collapsed")
 
 with row1_col2:
-    selected_date = [lien suspect supprimé]_input("📅 اختيار التاريخ", [lien suspect supprimé](), label_visibility="collapsed")
+    selected_date = st.date_input("📅 اختيار التاريخ", datetime.date.today(), label_visibility="collapsed")
 
 with row1_col3:
     generate_btn = st.button("🪄 توليد المذكرة تلقائياً", type="primary", use_container_width=True)
@@ -182,7 +180,7 @@ with row2_c1:
     st.markdown('<div class="auto-badge">✅ تم اختيار التنسيق المناسب تلقائياً (أفقي Landscape)</div>', unsafe_allow_html=True)
 
 with row2_c2:
-    font_size = [lien suspect supprimé]_slider("↕️ حجم الخط", options=["80%", "90%", "100%", "110%", "120%"], value="100%")
+    font_size = st.select_slider("↕️ حجم الخط", options=["80%", "90%", "100%", "110%", "120%"], value="100%")
 
 with row2_c3:
     color_mode = st.selectbox("🎨 نمط الألوان", ["ملون (الافتراضي)", "أبيض وأسود"], label_visibility="collapsed")
@@ -197,9 +195,9 @@ st.markdown('</div>', unsafe_allow_html=True)
 all_slides_text = ""
 if uploaded_files:
     for uploaded_file in uploaded_files:
-        if [lien suspect supprimé].endswith(".pptx"):
+        if uploaded_file.name.endswith(".pptx"):
             prs = Presentation(uploaded_file)
-            all_slides_text += f"\n--- ملف: {[lien suspect supprimé]} ---\n"
+            all_slides_text += f"\n--- ملف: {uploaded_file.name} ---\n"
             for i, slide in enumerate(prs.slides):
                 all_slides_text += f"شريحة {i+1}:\n"
                 for shape in slide.shapes:
