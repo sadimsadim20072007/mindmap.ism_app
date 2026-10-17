@@ -3,16 +3,17 @@ import google.generativeai as genai
 from pptx import Presentation
 import json
 import datetime
+import os
 
-# ضبط إعدادات الصفحة - وضع أفقي واسع ومريح
+# ضبط إعدادات الصفحة
 st.set_page_config(
     page_title="المدرسة الرائدة - المذكرة اليومية الذكية",
-    page_icon="📚",
+    page_icon="🏛️",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# تطبيق تنسيقات CSS لمطابقة الواجهة
+# تطبيق تنسيقات CSS احترافية
 st.markdown("""
 <style>
     html, body, [class*="css"] {
@@ -22,16 +23,16 @@ st.markdown("""
         background-color: #f4f7f9;
     }
 
-    /* الشريط العلوي للتحكم والأزرار */
+    /* الشريط العلوي */
     .top-toolbar {
         background-color: #ffffff;
-        padding: 15px 20px;
+        padding: 20px;
         border-radius: 15px;
         box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-        margin-bottom: 15px;
+        margin-bottom: 20px;
     }
 
-    /* شارة التنبيه التلقائي */
+    /* شارة التنبيه */
     .auto-badge {
         background-color: #e6f4ea;
         color: #137333;
@@ -44,35 +45,6 @@ st.markdown("""
         margin-bottom: 10px;
     }
 
-    .info-text {
-        color: #5f6368;
-        font-size: 0.95rem;
-        margin-bottom: 15px;
-    }
-
-    /* بطاقة المذكرة اليومية الرئيسية */
-    .memo-container {
-        background: #ffffff;
-        border: 2px solid #dcdfe3;
-        border-radius: 12px;
-        padding: 15px;
-        margin-top: 15px;
-        box-shadow: 0 6px 20px rgba(0,0,0,0.06);
-    }
-
-    .memo-header {
-        background: #0d233a;
-        color: #ffffff;
-        padding: 10px 20px;
-        border-radius: 8px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        font-weight: bold;
-        font-size: 1.1rem;
-        margin-bottom: 15px;
-    }
-
     /* بطاقات المواد الملونة */
     .subject-card {
         border-radius: 10px;
@@ -81,67 +53,18 @@ st.markdown("""
         height: 100%;
     }
 
-    /* بطاقة اللغة الفرنسية - بنفسجي */
-    .card-fr {
-        background-color: #f5edf7;
-        border: 2px solid #8e44ad;
-    }
-    .card-fr .sec-header {
-        background-color: #8e44ad;
-        color: white;
-        padding: 6px 12px;
-        border-radius: 6px;
-        font-weight: bold;
-    }
+    .card-fr { background-color: #f5edf7; border: 2px solid #8e44ad; }
+    .card-ar { background-color: #eaf5ea; border: 2px solid #27ae60; }
+    .card-math { background-color: #eaf2f8; border: 2px solid #2980b9; }
 
-    /* بطاقة اللغة العربية - أخضر */
-    .card-ar {
-        background-color: #eaf5ea;
-        border: 2px solid #27ae60;
-    }
-    .card-ar .sec-header {
-        background-color: #27ae60;
-        color: white;
-        padding: 6px 12px;
-        border-radius: 6px;
-        font-weight: bold;
-    }
+    .card-fr .sec-header { background-color: #8e44ad; color: white; padding: 6px 12px; border-radius: 6px; font-weight: bold; }
+    .card-ar .sec-header { background-color: #27ae60; color: white; padding: 6px 12px; border-radius: 6px; font-weight: bold; }
+    .card-math .sec-header { background-color: #2980b9; color: white; padding: 6px 12px; border-radius: 6px; font-weight: bold; }
 
-    /* بطاقة الرياضيات - أزرق */
-    .card-math {
-        background-color: #eaf2f8;
-        border: 2px solid #2980b9;
-    }
-    .card-math .sec-header {
-        background-color: #2980b9;
-        color: white;
-        padding: 6px 12px;
-        border-radius: 6px;
-        font-weight: bold;
-    }
-
-    .meta-bar {
-        background: rgba(0,0,0,0.05);
-        padding: 5px 10px;
-        border-radius: 5px;
-        font-size: 0.85rem;
-        margin-bottom: 10px;
-        font-weight: 600;
-    }
-
-    .time-badge {
-        float: left;
-        background: rgba(255,255,255,0.8);
-        color: #333;
-        padding: 2px 8px;
-        border-radius: 12px;
-        font-size: 0.8rem;
-    }
-
-    .stButton>button {
-        border-radius: 8px !important;
-        font-weight: bold !important;
-    }
+    .meta-bar { background: rgba(0,0,0,0.05); padding: 5px 10px; border-radius: 5px; font-size: 0.85rem; margin-bottom: 10px; font-weight: 600; }
+    .time-badge { float: left; background: rgba(255,255,255,0.8); color: #333; padding: 2px 8px; border-radius: 12px; font-size: 0.8rem; }
+    
+    .stButton>button { border-radius: 8px !important; font-weight: bold !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -151,11 +74,29 @@ with st.sidebar:
     api_key = st.text_input("أدخل مفتاح Gemini API الخاص بك:", type="password")
     model_name = st.selectbox("النموذج المستخدم:", ["gemini-3.8-flash", "gemini-1.5-flash", "gemini-1.5-pro"])
     st.markdown("---")
-    st.info("💡 يتم تحليل ملفات PPTX وإنشاء المذكرة الموحدة المخصصة لمؤسسات الريادة.")
+    st.info("💡 تحليلات المذكرة اليومية لمؤسسات الريادة.")
 
-# 1. شريط التحكم العلوي والأزرار
+# 1. شريط العرض العلوي مع اللوجو والترويسة الرسمية
 st.markdown('<div class="top-toolbar">', unsafe_allow_html=True)
 
+header_col1, header_col2 = st.columns([1, 4])
+
+with header_col1:
+    # عرض شعار الوزارة من المجلد عند رفعه إلى GitHub
+    if os.path.exists("logo.png"):
+        st.image("logo.png", width=170)
+    elif os.path.exists("logo_ministère.jpg"):
+        st.image("logo_ministère.jpg", width=170)
+    else:
+        st.markdown("🏛️ **شعار الوزارة**")
+
+with header_col2:
+    st.markdown("### المملكة المغربية - وزارة التربية الوطنية والتعليم الأولي والرياضة")
+    st.markdown("#### 🏫 المدرسة الرائدة | المذكرة اليومية الذكية")
+
+st.markdown("---")
+
+# أدوات التحكم ورفع الملفات
 row1_col1, row1_col2, row1_col3, row1_col4, row1_col5 = st.columns([2.5, 1.8, 2, 1.2, 1.2])
 
 with row1_col1:
@@ -168,30 +109,15 @@ with row1_col3:
     generate_btn = st.button("🪄 توليد المذكرة تلقائياً", type="primary", use_container_width=True)
 
 with row1_col4:
-    st.button("📚 مكتبتي (1)", use_container_width=True)
+    st.button("📚 مكتبتي", use_container_width=True)
 
 with row1_col5:
-    st.button("💾 حفظ المذكرة", use_container_width=True)
+    st.button("💾 حفظ", use_container_width=True)
 
-# شريط الخيارات الإضافية
-row2_c1, row2_c2, row2_c3, row2_c4 = st.columns([2.2, 1.5, 1.5, 1.8])
-
-with row2_c1:
-    st.markdown('<div class="auto-badge">✅ تم اختيار التنسيق المناسب تلقائياً (أفقي Landscape)</div>', unsafe_allow_html=True)
-
-with row2_c2:
-    font_size = st.select_slider("↕️ حجم الخط", options=["80%", "90%", "100%", "110%", "120%"], value="100%")
-
-with row2_c3:
-    color_mode = st.selectbox("🎨 نمط الألوان", ["ملون (الافتراضي)", "أبيض وأسود"], label_visibility="collapsed")
-
-with row2_c4:
-    st.markdown(f"**التاريخ:** {selected_date.strftime('%Y-%m-%d')}")
-
-st.markdown('<div class="info-text">أدرج ملفات حصصك اليومية (PPTX)، وسيتولى النظام إنشاء المذكرة اليومية الموحدة بالكامل وتجهيزها.</div>', unsafe_allow_html=True)
+st.markdown('<div class="auto-badge">✅ تم إدراج شعار الوزارة الرسمي وإعداد التنسيق التلقائي</div>', unsafe_allow_html=True)
 st.markdown('</div>', unsafe_allow_html=True)
 
-# قراءة واستخراج النصوص من العروض التقديمية PPTX
+# استخراج النص من العروض
 all_slides_text = ""
 if uploaded_files:
     for uploaded_file in uploaded_files:
@@ -205,7 +131,7 @@ if uploaded_files:
                         for paragraph in shape.text_frame.paragraphs:
                             all_slides_text += paragraph.text + "\n"
 
-# زر التوليد وإنشاء المذكرة اليومية
+# زر التوليد
 if generate_btn:
     if not api_key:
         st.error("يرجى إدخال مفتاح Gemini API في القائمة الجانبية أولاً.")
@@ -287,11 +213,11 @@ if generate_btn:
                 
                 data = json.loads(res_text)
                 
-                # عرض شريط المذكرة اليومية الموحد
+                # عرض شريط المذكرة اليومية مع اللوجو
                 st.markdown(f"""
-                <div class="memo-container">
-                    <div class="memo-header">
-                        <div>🏫 المدرسة الرائدة | مذكرة يومية - فترة دعم تعلمات الأساس</div>
+                <div style="background: #ffffff; border: 2px solid #dcdfe3; border-radius: 12px; padding: 15px; margin-top: 15px;">
+                    <div style="background: #0d233a; color: #ffffff; padding: 12px 20px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 1.1rem; margin-bottom: 15px;">
+                        <div>🏫 المملكة المغربية - وزارة التربية الوطنية والتعليم الأولي والرياضة | المذكرة اليومية - المدرسة الرائدة</div>
                         <div>📅 التاريخ: {selected_date.strftime('%Y-%m-%d')}</div>
                     </div>
                 </div>
