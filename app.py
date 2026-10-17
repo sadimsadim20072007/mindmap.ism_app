@@ -1,225 +1,395 @@
 import streamlit as st
 import google.generativeai as genai
-import pypdf
 from pptx import Presentation
-from PIL import Image
-from pdf2docx import Converter
-import os
+import json
 import datetime
 
-# ضبط إعدادات الصفحة
+# ضبط إعدادات الصفحة - وضع أفقي واسع ومريح
 st.set_page_config(
-    page_title="صانع المذكرات والخرائط الذهنية",
-    page_icon="🧠",
+    page_title="المدرسة الرائدة - المذكرة اليومية الذكية",
+    page_icon="📚",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
-# تطبيق تنسيقات CSS احترافية
+# تطبيق تنسيقات CSS لمطابقة الواجهة
 st.markdown("""
 <style>
+    @import url('[suspicious link removed]');
+    
     html, body, [class*="css"] {
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+        font-family: 'Tajawal', sans-serif !important;
         direction: rtl;
         text-align: right;
-    }
-    
-    /* الهيدر العلوي الداكن */
-    .hero-header {
-        background: linear-gradient(135deg, #0d233a 0%, #17375e 100%);
-        color: #ffffff;
-        padding: 2.5rem 1.5rem;
-        border-radius: 0 0 20px 20px;
-        text-align: center;
-        margin-top: -3rem;
-        margin-left: -3rem;
-        margin-right: -3rem;
-        margin-bottom: 2rem;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-    }
-    .hero-title {
-        font-size: 2.2rem;
-        font-weight: 800;
-        margin-bottom: 0.5rem;
-        color: #ffffff;
-    }
-    .hero-subtitle {
-        font-size: 1.1rem;
-        opacity: 0.9;
-        margin-bottom: 1.2rem;
-    }
-    .hero-badge {
-        background: rgba(255, 255, 255, 0.15);
-        border: 1px solid rgba(255, 255, 255, 0.25);
-        display: inline-block;
-        padding: 0.5rem 1.2rem;
-        border-radius: 30px;
-        font-size: 0.95rem;
+        background-color: #f4f7f9;
     }
 
-    /* أزرار مخصصة */
-    .stButton>button {
-        border-radius: 10px !important;
-        font-weight: 700 !important;
-        font-size: 1rem !important;
-        padding: 0.6rem 1.2rem !important;
-        transition: all 0.3s ease !important;
+    /* الشريط العلوي للتحكم والأزرار */
+    .top-toolbar {
+        background-color: #ffffff;
+        padding: 15px 20px;
+        border-radius: 15px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        margin-bottom: 15px;
     }
-    
-    /* شارة التنبيه والوضع */
-    .status-pill {
+
+    /* شارة التنبيه التلقائي */
+    .auto-badge {
         background-color: #e6f4ea;
         color: #137333;
-        padding: 0.6rem 1.2rem;
-        border-radius: 20px;
-        font-weight: 600;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
         border: 1px solid #ceead6;
-        margin-bottom: 1rem;
+        padding: 8px 16px;
+        border-radius: 25px;
+        font-weight: 700;
+        font-size: 0.9rem;
+        display: inline-block;
+        margin-bottom: 10px;
+    }
+
+    .info-text {
+        color: #5f6368;
+        font-size: 0.95rem;
+        margin-bottom: 15px;
+    }
+
+    /* بطاقة المذكرة اليومية الرئيسية */
+    .memo-container {
+        background: #ffffff;
+        border: 2px solid #dcdfe3;
+        border-radius: 12px;
+        padding: 15px;
+        margin-top: 15px;
+        box-shadow: 0 6px 20px rgba(0,0,0,0.06);
+    }
+
+    .memo-header {
+        background: #0d233a;
+        color: #ffffff;
+        padding: 10px 20px;
+        border-radius: 8px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-weight: bold;
+        font-size: 1.1rem;
+        margin-bottom: 15px;
+    }
+
+    /* بطاقات المواد الملونة */
+    .subject-card {
+        border-radius: 10px;
+        padding: 12px;
+        color: #1a1a1a;
+        height: 100%;
+    }
+
+    /* بطاقة اللغة الفرنسية - بنفسجي */
+    .card-fr {
+        background-color: #f5edf7;
+        border: 2px solid #8e44ad;
+    }
+    .card-fr .sec-header {
+        background-color: #8e44ad;
+        color: white;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-weight: bold;
+    }
+
+    /* بطاقة اللغة العربية - أخضر */
+    .card-ar {
+        background-color: #eaf5ea;
+        border: 2px solid #27ae60;
+    }
+    .card-ar .sec-header {
+        background-color: #27ae60;
+        color: white;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-weight: bold;
+    }
+
+    /* بطاقة الرياضيات - أزرق */
+    .card-math {
+        background-color: #eaf2f8;
+        border: 2px solid #2980b9;
+    }
+    .card-math .sec-header {
+        background-color: #2980b9;
+        color: white;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-weight: bold;
+    }
+
+    .meta-bar {
+        background: rgba(0,0,0,0.05);
+        padding: 5px 10px;
+        border-radius: 5px;
+        font-size: 0.85rem;
+        margin-bottom: 10px;
+        font-weight: 600;
+    }
+
+    .time-badge {
+        float: left;
+        background: rgba(255,255,255,0.8);
+        color: #333;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 0.8rem;
+    }
+
+    .stButton>button {
+        border-radius: 8px !important;
+        font-weight: bold !important;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# 1. الهيدر الداكن الرئيسي
-st.markdown("""
-<div class="hero-header">
-    <div class="hero-title">🧠 المذكرة اليومية والخرائط الذهنية الذكية</div>
-    <div class="hero-subtitle">التوليد التلقائي الشامل وفق مقاربة التدريس والتأطير التربوي المناسب</div>
-    <div class="hero-badge">📅 انقر لاختيار التاريخ، ثم ارفع ملفاتك ليتم التوليد والتنسيق تلقائياً</div>
-</div>
-""", unsafe_allow_html=True)
-
-# القائمة الجانبية لإعداد مفتاح API والخيارات
+# الشريط الجانبي لإعداد مفتاح API
 with st.sidebar:
-    st.header("⚙️ الإعدادات العامة")
+    st.header("⚙️ إعدادات النظام")
     api_key = st.text_input("أدخل مفتاح Gemini API الخاص بك:", type="password")
-    selected_model = st.selectbox("نموذج الذكاء الاصطناعي:", ["gemini-3.8-flash", "gemini-1.5-flash", "gemini-1.5-pro"])
+    model_name = st.selectbox("النموذج المستخدم:", ["gemini-3.8-flash", "gemini-1.5-flash", "gemini-1.5-pro"])
     st.markdown("---")
-    st.info("💡 يتم استخدام النموذج المحدد لتوليد الخرائط والمذكرات وفق الهيكلة التربوية.")
+    [lien suspect supprimé]("💡 يتم تحليل ملفات PPTX وإنشاء المذكرة الموحدة المخصصة لمؤسسات الريادة.")
 
-# حاوية الإدخال والتحكم الرئيسية
-col_file, col_date = st.columns(2)
+# 1. شريط التحكم العلوي والأزرار
+st.markdown('<div class="top-toolbar">', unsafe_allow_html=True)
 
-with col_date:
-    selected_date = st.date_input("📅 اختيار التاريخ", datetime.date.today())
+row1_col1, row1_col2, row1_col3, row1_col4, row1_col5 = st.columns([2.5, 1.8, 2, 1.2, 1.2])
 
-with col_file:
-    uploaded_file = st.file_uploader("📂 إدراج العروض أو المستندات (PDF, PPTX, TXT, PNG, JPG)", type=["pdf", "txt", "pptx", "png", "jpg", "jpeg"])
+with row1_col1:
+    uploaded_files = st.file_uploader("💻 إدراج العروض التقديمية (PPTX)", type=["pptx", "pdf"], accept_multiple_files=True, label_visibility="collapsed")
 
-text_content = ""
-image_input = None
+with row1_col2:
+    selected_date = [lien suspect supprimé]_input("📅 اختيار التاريخ", [lien suspect supprimé](), label_visibility="collapsed")
 
-if uploaded_file is not None:
-    file_ext = uploaded_file.name.split(".")[-1].lower()
-    
-    # قراءة الملف حسب نوعه
-    if file_ext == "pdf":
-        pdf_reader = pypdf.PdfReader(uploaded_file)
-        for page in pdf_reader.pages:
-            text_content += page.extract_text() or ""
-    elif file_ext == "txt":
-        text_content = uploaded_file.read().decode("utf-8")
-    elif file_ext == "pptx":
-        prs = Presentation(uploaded_file)
-        for slide in prs.slides:
-            for shape in slide.shapes:
-                if shape.has_text_frame:
-                    for paragraph in shape.text_frame.paragraphs:
-                        text_content += paragraph.text + "\n"
-    elif file_ext in ["png", "jpg", "jpeg"]:
-        image_input = Image.open(uploaded_file)
+with row1_col3:
+    generate_btn = st.button("🪄 توليد المذكرة تلقائياً", type="primary", use_container_width=True)
 
-    st.markdown(f"""
-    <div class="status-pill">
-        ✅ تم تحميل الملف <b>{uploaded_file.name}</b> بنجاح وسيكون التنسيق عمودياً تلقائياً.
-    </div>
-    """, unsafe_allow_html=True)
+with row1_col4:
+    st.button("📚 مكتبتي (1)", use_container_width=True)
 
-    # شريط الأزرار الرئيسية المنسق
-    c1, c2, c3 = st.columns(3)
-    
-    with c1:
-        generate_btn = st.button("🪄 توليد المذكرة والخطاطة تلقائياً", type="primary", use_container_width=True)
-    with c2:
-        convert_btn = st.button("🔄 تحويل PDF إلى Word", use_container_width=True)
-    with c3:
-        st.caption(f"تاريخ الحصة: {selected_date.strftime('%Y-%m-%d')}")
+with row1_col5:
+    st.button("💾 حفظ المذكرة", use_container_width=True)
 
-    # قسم تحويل PDF إلى Word
-    if convert_btn:
-        if file_ext != "pdf":
-            st.warning("يرجى رفع ملف بصيغة PDF للتمكن من تحويله إلى Word.")
-        else:
-            with st.spinner("جاري التحويل إلى Word..."):
-                try:
-                    temp_pdf = "temp_input.pdf"
-                    temp_docx = "converted_output.docx"
-                    
-                    with open(temp_pdf, "wb") as f:
-                        f.write(uploaded_file.getbuffer())
-                    
-                    cv = Converter(temp_pdf)
-                    cv.convert(temp_docx, start=0, end=None)
-                    cv.close()
-                    
-                    with open(temp_docx, "rb") as f:
-                        docx_data = f.read()
-                        
-                    st.success("تم التحويل بنجاح!")
-                    filename_base = uploaded_file.name.rsplit('.', 1)[0]
-                    st.download_button(
-                        label="📥 تحميل مستند Word (.docx)",
-                        data=docx_data,
-                        file_name=f"{filename_base}.docx",
-                        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                        use_container_width=True
-                    )
-                    
-                    if os.path.exists(temp_pdf): os.remove(temp_pdf)
-                    if os.path.exists(temp_docx): os.remove(temp_docx)
-                except Exception as e:
-                    st.error(f"حدث خطأ أثناء التحويل: {e}")
+# شريط الخيارات الإضافية
+row2_c1, row2_c2, row2_c3, row2_c4 = st.columns([2.2, 1.5, 1.5, 1.8])
 
-    # قسم توليد الخريطة والمذكرة
-    if generate_btn:
-        if not api_key:
-            st.error("يرجى إدخال مفتاح Gemini API في القائمة الجانبية أولاً.")
-        else:
-            try:
-                genai.configure(api_key=api_key)
-                model = genai.GenerativeModel(selected_model)
+with row2_c1:
+    st.markdown('<div class="auto-badge">✅ تم اختيار التنسيق المناسب تلقائياً (أفقي Landscape)</div>', unsafe_allow_html=True)
+
+with row2_c2:
+    font_size = [lien suspect supprimé]_slider("↕️ حجم الخط", options=["80%", "90%", "100%", "110%", "120%"], value="100%")
+
+with row2_c3:
+    color_mode = st.selectbox("🎨 نمط الألوان", ["ملون (الافتراضي)", "أبيض وأسود"], label_visibility="collapsed")
+
+with row2_c4:
+    st.markdown(f"**التاريخ:** {selected_date.strftime('%Y-%m-%d')}")
+
+st.markdown('<div class="info-text">أدرج ملفات حصصك اليومية (PPTX)، وسيتولى النظام إنشاء المذكرة اليومية الموحدة بالكامل وتجهيزها.</div>', unsafe_allow_html=True)
+st.markdown('</div>', unsafe_allow_html=True)
+
+# قراءة واستخراج النصوص من العروض التقديمية PPTX
+all_slides_text = ""
+if uploaded_files:
+    for uploaded_file in uploaded_files:
+        if [lien suspect supprimé].endswith(".pptx"):
+            prs = Presentation(uploaded_file)
+            all_slides_text += f"\n--- ملف: {[lien suspect supprimé]} ---\n"
+            for i, slide in enumerate(prs.slides):
+                all_slides_text += f"شريحة {i+1}:\n"
+                for shape in slide.shapes:
+                    if shape.has_text_frame:
+                        for paragraph in shape.text_frame.paragraphs:
+                            all_slides_text += paragraph.text + "\n"
+
+# زر التوليد وإنشاء المذكرة اليومية
+if generate_btn:
+    if not api_key:
+        st.error("يرجى إدخال مفتاح Gemini API في القائمة الجانبية أولاً.")
+    elif not uploaded_files:
+        st.warning("يرجى إدراج ملفات العروض التقديمية (PPTX) أولاً.")
+    else:
+        try:
+            genai.configure(api_key=api_key)
+            model = genai.GenerativeModel(model_name)
+            
+            with st.spinner("جاري استخراج البيانات وتنسيق المذكرة اليومية للأعمدة الثلاثة..."):
+                prompt = f"""
+                أنت خبير تربوي متخصص في إعداد مذكرات "المدرسة الرائدة" (فترة دعم تعلمات الأساس).
+                قم بتحليل محتوى العروض التقديمية واستخراج المذكرة اليومية بالضبط لـ 3 مواد:
                 
-                with st.spinner("جاري تحليل المحتوى وتوليد الخطاطة والمذكرة بالكامل..."):
-                    prompt = f"""
-                    تاريخ الحصة: {selected_date.strftime('%Y-%m-%d')}
-                    قم بتحليل المحتوى المرفق واستخراج خطاطة ومذكرة ذهنية شاملة تتبع بالظبط الهيكلة التالية:
+                تاريخ اليوم: {selected_date.strftime('%Y-%m-%d')}
 
-                    1. **العقدة الرئيسية (الموضوع / العنوان)**
-                    2. **الفروع الرئيسية الأربعة الإلزامية:**
-                       - **الأهداف والمعلومات العامة**
-                       - **المراحل والأنشطة الزمنية** (افتتاح الحصة، أنشطة القراءة، أنشطة الكتابة، الاختتام)
-                       - **الوسائل والدعامات التربوية**
-                       - **التقويم والواجبات المنزلية**
+                استخرج البيانات واسترجعها في صيغة JSON حصرية بالهيكل التالي:
+                {{
+                  "francais": {{
+                    "level": "Niv: 5",
+                    "palier": "Pal: 1",
+                    "sequence": "Séa: 3",
+                    "objectifs": "الأهداف التعليمية للمادة...",
+                    "step1_title": "1. Rituel d'ouverture",
+                    "step1_duration": "10 min",
+                    "step1_desc": "أنشطة الافتتاح والتهيئة...",
+                    "step2_title": "2. Activité principale / Vocabulaire",
+                    "step2_duration": "30 min",
+                    "step2_desc": "الأنشطة والتمارين الرئيسية...",
+                    "step3_title": "3. Evaluation & Clôture",
+                    "step3_duration": "15 min",
+                    "step3_desc": "أنشطة التقويم والختام..."
+                  }},
+                  "arabic": {{
+                    "level": "المستوى: 5",
+                    "labna": "اللبنة: التمكن",
+                    "hissa": "الحصة: 1",
+                    "objectifs": "الأهداف التربوية المحددة...",
+                    "step1_title": "1. افتتاح الحصة",
+                    "step1_duration": "15 د",
+                    "step1_desc": "أنشطة التهيئة وقراءة اللوحة...",
+                    "step2_title": "2. أنشطة قرائية",
+                    "step2_duration": "30 د",
+                    "step2_desc": "قراءة النصوص والكلمات والتطبيقات...",
+                    "step3_title": "3. أنشطة كتابية وتقويم",
+                    "step3_duration": "15 د",
+                    "step3_desc": "النقل والإنتاج والتقويم..."
+                  }},
+                  "math": {{
+                    "level": "المستوى: 5",
+                    "labna": "اللبنة: الأعداد الصحيحة",
+                    "hissa": "الحصة: 1",
+                    "objectifs": "أهداف درس الرياضيات...",
+                    "step1_title": "1. الحساب الذهني والافتتاح",
+                    "step1_duration": "15 د",
+                    "step1_desc": "أنشطة الحساب الذهني السريع...",
+                    "step2_title": "2. النشاط الرئيسي",
+                    "step2_duration": "30 د",
+                    "step2_desc": "بناء المفهوم وحل المسائل...",
+                    "step3_title": "3. تقويم ودعم",
+                    "step3_duration": "15 د",
+                    "step3_desc": "أنشطة التقويم الفردي والدعم..."
+                  }}
+                }}
 
-                    قم بصياغة النتيجة كـ كود Graphviz DOT فقط (دون أي نص خارجي)، ابدأ بـ `digraph G {{` وانته بـ `}}`.
-                    استخدم الاتجاه الأفقي `rankdir=LR;` وأشكال مستطيلات ملونة لكل فرع.
-                    """
-                    
-                    if image_input:
-                        response = model.generate_content([prompt, image_input])
-                    else:
-                        response = model.generate_content(f"{prompt}\n\nالنص المراد تحليله:\n{text_content[:8000]}")
-                    
-                    dot_code = response.text.strip()
-                    
-                    if "```" in dot_code:
-                        lines = dot_code.split("\n")
-                        dot_code = "\n".join([line for line in lines if not line.startswith("```")])
-                    
-                    st.markdown("### 📌 المذكرة والخطاطة الذهنية المستخرجة:")
-                    st.graphviz_chart(dot_code)
-                    
-            except Exception as e:
-                st.error(f"حدث خطأ أثناء الرسم والتوليد: {e}")
+                اكتب كود JSON فقط دون أي نصوص إضافية.
+                نص الشرائح للتحليل:
+                {all_slides_text[:10000]}
+                """
+                
+                response = model.generate_content(prompt)
+                res_text = response.text.strip()
+                
+                if "```json" in res_text:
+                    res_text = res_text.split("```json")[1].split("```")[0].strip()
+                elif "```" in res_text:
+                    res_text = res_text.split("```")[1].split("```")[0].strip()
+                
+                data = json.loads(res_text)
+                
+                # عرض شريط المذكرة اليومية الموحد
+                st.markdown(f"""
+                <div class="memo-container">
+                    <div class="memo-header">
+                        <div>🏫 المدرسة الرائدة | مذكرة يومية - فترة دعم تعلمات الأساس</div>
+                        <div>📅 التاريخ: {selected_date.strftime('%Y-%m-%d')}</div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                col_fr, col_ar, col_ma = st.columns(3)
+                
+                # عمود Français
+                with col_fr:
+                    fr = data.get("francais", {})
+                    st.markdown(f"""
+                    <div class="subject-card card-fr">
+                        <div class="sec-header">Français</div>
+                        <div class="meta-bar">{fr.get('level', '')} | {fr.get('palier', '')} | {fr.get('sequence', '')}</div>
+                        <div style="font-weight:bold; color:#8e44ad;">🎯 Objectifs:</div>
+                        <p style="font-size:0.9rem;">{fr.get('objectifs', '')}</p>
+                        <hr style="border-color:#8e44ad;">
+                        <div>
+                            <strong>{fr.get('step1_title', '')}</strong>
+                            <span class="time-badge">{fr.get('step1_duration', '')}</span>
+                            <p style="font-size:0.85rem; margin-top:5px;">{fr.get('step1_desc', '')}</p>
+                        </div>
+                        <hr style="border-color:#8e44ad;">
+                        <div>
+                            <strong>{fr.get('step2_title', '')}</strong>
+                            <span class="time-badge">{fr.get('step2_duration', '')}</span>
+                            <p style="font-size:0.85rem; margin-top:5px;">{fr.get('step2_desc', '')}</p>
+                        </div>
+                        <hr style="border-color:#8e44ad;">
+                        <div>
+                            <strong>{fr.get('step3_title', '')}</strong>
+                            <span class="time-badge">{fr.get('step3_duration', '')}</span>
+                            <p style="font-size:0.85rem; margin-top:5px;">{fr.get('step3_desc', '')}</p>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                # عمود اللغة العربية
+                with col_ar:
+                    ar = data.get("arabic", {})
+                    st.markdown(f"""
+                    <div class="subject-card card-ar">
+                        <div class="sec-header">اللغة العربية</div>
+                        <div class="meta-bar">{ar.get('level', '')} | {ar.get('labna', '')} | {ar.get('hissa', '')}</div>
+                        <div style="font-weight:bold; color:#27ae60;">🎯 الأهداف:</div>
+                        <p style="font-size:0.9rem;">{ar.get('objectifs', '')}</p>
+                        <hr style="border-color:#27ae60;">
+                        <div>
+                            <strong>{ar.get('step1_title', '')}</strong>
+                            <span class="time-badge">{ar.get('step1_duration', '')}</span>
+                            <p style="font-size:0.85rem; margin-top:5px;">{ar.get('step1_desc', '')}</p>
+                        </div>
+                        <hr style="border-color:#27ae60;">
+                        <div>
+                            <strong>{ar.get('step2_title', '')}</strong>
+                            <span class="time-badge">{ar.get('step2_duration', '')}</span>
+                            <p style="font-size:0.85rem; margin-top:5px;">{ar.get('step2_desc', '')}</p>
+                        </div>
+                        <hr style="border-color:#27ae60;">
+                        <div>
+                            <strong>{ar.get('step3_title', '')}</strong>
+                            <span class="time-badge">{ar.get('step3_duration', '')}</span>
+                            <p style="font-size:0.85rem; margin-top:5px;">{ar.get('step3_desc', '')}</p>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                # عمود الرياضيات
+                with col_ma:
+                    ma = data.get("math", {})
+                    st.markdown(f"""
+                    <div class="subject-card card-math">
+                        <div class="sec-header">الرياضيات</div>
+                        <div class="meta-bar">{ma.get('level', '')} | {ma.get('labna', '')} | {ma.get('hissa', '')}</div>
+                        <div style="font-weight:bold; color:#2980b9;">🎯 الأهداف:</div>
+                        <p style="font-size:0.9rem;">{ma.get('objectifs', '')}</p>
+                        <hr style="border-color:#2980b9;">
+                        <div>
+                            <strong>{ma.get('step1_title', '')}</strong>
+                            <span class="time-badge">{ma.get('step1_duration', '')}</span>
+                            <p style="font-size:0.85rem; margin-top:5px;">{ma.get('step1_desc', '')}</p>
+                        </div>
+                        <hr style="border-color:#2980b9;">
+                        <div>
+                            <strong>{ma.get('step2_title', '')}</strong>
+                            <span class="time-badge">{ma.get('step2_duration', '')}</span>
+                            <p style="font-size:0.85rem; margin-top:5px;">{ma.get('step2_desc', '')}</p>
+                        </div>
+                        <hr style="border-color:#2980b9;">
+                        <div>
+                            <strong>{ma.get('step3_title', '')}</strong>
+                            <span class="time-badge">{ma.get('step3_duration', '')}</span>
+                            <p style="font-size:0.85rem; margin-top:5px;">{ma.get('step3_desc', '')}</p>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
+        except Exception as e:
+            st.error(f"حدث خطأ أثناء معالجة العروض: {e}")
