@@ -107,7 +107,7 @@ if st.button("🚀 بدء التحليل الديداكتيكي", type="primary"
                 
                 # استدعاء النموذج
                 response = client.models.generate_content(
-                    model="gemini-2.5-flash",
+                    model="gemini-3.8-flash",
                     contents=[uploaded_part, SYSTEM_PROMPT]
                 )
                 
